@@ -1,0 +1,28 @@
+implementations: https://github.com/ajayn1997/RL-VRP-PtrNtwrk
+
+RL for solving the VRP
+
+A policy is proposed that performs well on any problem sampled from a given distribution.
+This means that if we generate a new VRP instance with the SAME NUMBER OF NODES and VEHICLE CAPACITY
+and the same location and demand distributions as the ones we used during training, then the trained policy will work well
+and we can solve the problem right away without retraining for every new instance.
+
+The difference with [4] is that it assumes the system is static over time. In contrast the in vrp the demands
+change over time in the sense that once a node has been visited its demand becomes zero.
+
+To make Pointer network approach work for botch static and dynamic elements:
+The proposed policy model consists of a RNN decoder coupled with an attention mechanism.
+At each time step, the embeddings of the static elements are the input to the RNN decoders and the output of the RNN and the dynamic element
+embeddings are fed into an attention mechanism which forms a distribution over the feasible destinations
+that can be chosen at the next decision point.
+
+This is robust to problem changes e.g. when a customer changes its demand value or relocates to a different location,
+it can automatically adapt the solution. The heuristics for this case would recalculate the whole distance matrix and
+the system must be reoptimized from scratch.
+In contrast our framework doenst require an explicit distance matrix and only one feed-forward pass
+of the network will update the routes based on the new data.
+
+
+
+
+[4] Neural combinatorial optimization with reinforcement learning
