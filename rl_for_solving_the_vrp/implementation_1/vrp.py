@@ -5,7 +5,6 @@ The VRP is defined by the following traits:
     2. Each vehicle has a capacity (depends on problem), the must visit all cities
     3. When the vehicle load is 0, it __must__ return to the depot to refill
 """
-
 import os
 import numpy as np
 import torch
@@ -17,8 +16,7 @@ import matplotlib.pyplot as plt
 
 
 class VehicleRoutingDataset(Dataset):
-    def __init__(self, num_samples, input_size, max_load=20, max_demand=9,
-                 seed=None):
+    def __init__(self, num_samples, input_size,   max_load=20, max_demand=9, seed=None, locations=None):
         super(VehicleRoutingDataset, self).__init__()
 
         if max_load < max_demand:
@@ -34,13 +32,18 @@ class VehicleRoutingDataset(Dataset):
         self.max_demand = max_demand
 
         # Depot location will be the first node in each
-        locations = torch.rand((num_samples, 2, input_size + 1))
+        if locations is None:
+            locations = torch.rand((num_samples, 2, input_size + 1))
+        else:
+            print("FOUND UR LOCATIONS WOHOO")
+
         self.static = locations
 
         # All states will broadcast the drivers current load
         # Note that we only use a load between [0, 1] to prevent large
         # numbers entering the neural network
-        dynamic_shape = (num_samples, 1, input_size + 1)
+        # dynamic_shape = (num_samples, 1, input_size + 1) why +1?
+        dynamic_shape = (num_samples, 1, input_size)
         loads = torch.full(dynamic_shape, 1.)
 
         # All states will have their own intrinsic demand in [1, max_demand),
@@ -73,11 +76,13 @@ class VehicleRoutingDataset(Dataset):
 
         # If there is no positive demand left, we can end the tour.
         # Note that the first node is the depot, which always has a negative demand
-        if demands.eq(0).all():
+        if demands.eq(0).all(): #demand of all nodes is 0
             return demands * 0.
 
         # Otherwise, we can choose to go anywhere where demand is > 0
-        new_mask = demands.ne(0) * demands.lt(loads)
+        has_some_node_demand_not_zero = demands.ne(0)
+        has_some_node_load_less_than_depot_available =demands.lt(loads)
+        new_mask = has_some_node_demand_not_zero * has_some_node_load_less_than_depot_available
 
         # We should avoid traveling to the depot back-to-back
         repeat_home = chosen_idx.ne(0)
@@ -103,8 +108,8 @@ class VehicleRoutingDataset(Dataset):
         """Updates the (load, demand) dataset values."""
 
         # Update the dynamic elements differently for if we visit depot vs. a city
-        visit = chosen_idx.ne(0)
-        depot = chosen_idx.eq(0)
+        visited_city = chosen_idx.ne(0)
+        visited_depot = chosen_idx.eq(0)
 
         # Clone the dynamic variable so we don't mess up graph
         all_loads = dynamic[:, 0].clone()
@@ -115,22 +120,21 @@ class VehicleRoutingDataset(Dataset):
 
         # Across the minibatch - if we've chosen to visit a city, try to satisfy
         # as much demand as possible
-        if visit.any():
-
+        if visited_city.any():
             new_load = torch.clamp(load - demand, min=0)
             new_demand = torch.clamp(demand - load, min=0)
 
             # Broadcast the load to all nodes, but update demand seperately
-            visit_idx = visit.nonzero().squeeze()
+            visit_idx = visited_city.nonzero().squeeze()
 
             all_loads[visit_idx] = new_load[visit_idx]
             all_demands[visit_idx, chosen_idx[visit_idx]] = new_demand[visit_idx].view(-1)
-            all_demands[visit_idx, 0] = -1. + new_load[visit_idx].view(-1)
+            all_demands[visit_idx, 0] = -1. + new_load[visit_idx].view(-1)#edw meiwnei kai to demand tou depot
 
         # Return to depot to fill vehicle load
-        if depot.any():
-            all_loads[depot.nonzero().squeeze()] = 1.
-            all_demands[depot.nonzero().squeeze(), 0] = 0.
+        if visited_depot.any():
+            all_loads[visited_depot.nonzero().squeeze()] = 1.
+            all_demands[visited_depot.nonzero().squeeze(), 0] = 0.
 
         tensor = torch.cat((all_loads.unsqueeze(1), all_demands.unsqueeze(1)), 1)
         return torch.tensor(tensor.data, device=dynamic.device)

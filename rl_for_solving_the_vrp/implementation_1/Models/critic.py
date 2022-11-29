@@ -7,7 +7,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class StateCritic(nn.Module):
     """Estimates the problem complexity.
-
     This is a basic module that just looks at the log-probabilities predicted by
     the encoder + decoder, and returns an estimate of complexity
     """
@@ -28,7 +27,6 @@ class StateCritic(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, static, dynamic):
-
         # Use the probabilities of visiting each
         static_hidden = self.static_encoder(static)
         dynamic_hidden = self.dynamic_encoder(dynamic)
@@ -42,14 +40,12 @@ class StateCritic(nn.Module):
 
 class Critic(nn.Module):
     """Estimates the problem complexity.
-
     This is a basic module that just looks at the log-probabilities predicted by
     the encoder + decoder, and returns an estimate of complexity
     """
 
     def __init__(self, hidden_size):
         super(Critic, self).__init__()
-
         # Define the encoder & decoder models
         self.fc1 = nn.Conv1d(1, hidden_size, kernel_size=1)
         self.fc2 = nn.Conv1d(hidden_size, 20, kernel_size=1)
@@ -60,7 +56,6 @@ class Critic(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, input):
-
         output = F.relu(self.fc1(input.unsqueeze(1)))
         output = F.relu(self.fc2(output)).squeeze(2)
         output = self.fc3(output).sum(dim=2)
