@@ -30,16 +30,32 @@ class Map:
                               zoom_start=self.zoom_start,
                               tooltip='This tooltip will appear on hover'
                               )
-    def showMap(self,map_name, open=False):
+    def showMap(self,map_name, open_in_browser=False, save_png=False):
 
         # Display the map
         self.map.save(map_name)
-        if open:
+
+        if open_in_browser:
             webbrowser.open('file://' + os.path.realpath(map_name))
             #webbrowser.open(map_name)
-    def add_marker(self, marker):
-        folium.Marker(config.thessaloniki_coordinates).add_to(self.map)
-    def plot_buffer_around_thessaloniki(self, number_of_nodes):
+        if save_png:
+            img_data = self.map._to_png(10)
+            img = Image.open(io.BytesIO(img_data))
+            img.save(map_name)
+
+    def add_markers_at_points(self,points):
+        # expects an array of points: [ [x1,y1],[x2,y2],...]
+        # first point is the depot
+        xs = points[0].tolist()
+        ys = points[1].tolist()
+        for i in range(len(points[0].tolist())):
+            if i==0:
+                # we denote depot
+                folium.Marker([xs[i], ys[i]],icon=folium.Icon(color='green')).add_to(self.map)
+            else:
+                folium.Marker([xs[i], ys[i]]).add_to(self.map)
+
+    def get_random_points_within_thessaloniki(self, number_of_nodes):
         thess_point = Point(config.thessaloniki_coordinates)
         thess_buffer = gpd.GeoSeries(thess_point).geometry.buffer(0.02)
         coords  = self.generate_random_location_within_ROI(number_of_nodes, thess_buffer)
@@ -51,7 +67,6 @@ class Map:
         img_data = self.map._to_png(10)
         img = Image.open(io.BytesIO(img_data))
         img.save(before_visiting_img_name)
-
         return coords
     def plot_lines_between_points(self, points, show_map=False):
         for i in range(len(points)):

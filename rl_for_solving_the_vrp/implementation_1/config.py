@@ -16,6 +16,7 @@ layers = 1
 train_size = 1 #1000
 valid_size = 1 #100
 
+data_path = "C:\\Users\\Lenovo\\Desktop\\Διπλωματική\\vehicle-routing-problem-rl\\rl_for_solving_the_vrp\\data\\vrp_data.xlsx"
 num_epochs = 2 #1000
 # print('NOTE: SETTTING CHECKPOINT: ')
 # args.checkpoint = os.path.join('vrp', '10', '12_59_47.350165' + os.path.sep)

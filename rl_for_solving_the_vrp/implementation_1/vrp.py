@@ -81,17 +81,17 @@ class VehicleRoutingDataset(Dataset):
 
         # Otherwise, we can choose to go anywhere where demand is > 0
         has_some_node_demand_not_zero = demands.ne(0)
-        has_some_node_load_less_than_depot_available =demands.lt(loads)
-        new_mask = has_some_node_demand_not_zero * has_some_node_load_less_than_depot_available
+        does_some_node_need_demand_less_than_depot_available =demands.lt(loads)
+        new_mask_with_allowed_cities = has_some_node_demand_not_zero * does_some_node_need_demand_less_than_depot_available
 
         # We should avoid traveling to the depot back-to-back
-        repeat_home = chosen_idx.ne(0)
+        chose_city_instead_of_depot = chosen_idx.ne(0) # dialexame kapoio city diaforo tou depot?
 
-        if repeat_home.any(): #checks if any element in input evaluates to True
-            new_mask[repeat_home.nonzero(), 0] = 1.
-        if ~repeat_home.any(): # mask inversion #(1 - repeat_home).any():
-            # new_mask[(1 - repeat_home).nonzero(), 0] = 0.
-            new_mask[(~repeat_home).nonzero(), 0] = 0.
+        if chose_city_instead_of_depot.any():
+            new_mask_with_allowed_cities[chose_city_instead_of_depot.nonzero(), 0] = 1. #ti kanei edw? thetei se true?
+        if ~chose_city_instead_of_depot.any(): # mask inversion #(1 - repeat_home).any():
+            # new_mask_with_allowed_cities[(1 - repeat_home).nonzero(), 0] = 0.
+            new_mask_with_allowed_cities[(~chose_city_instead_of_depot).nonzero(), 0] = 0.
 
         # ... unless we're waiting for all other samples in a minibatch to finish
         has_no_load = loads[:, 0].eq(0).float()
@@ -99,10 +99,10 @@ class VehicleRoutingDataset(Dataset):
 
         combined = (has_no_load + has_no_demand).gt(0)
         if combined.any():
-            new_mask[combined.nonzero(), 0] = 1.
-            new_mask[combined.nonzero(), 1:] = 0.
+            new_mask_with_allowed_cities[combined.nonzero(), 0] = 1.
+            new_mask_with_allowed_cities[combined.nonzero(), 1:] = 0.
 
-        return new_mask.float()
+        return new_mask_with_allowed_cities.float()
 
     def update_dynamic(self, dynamic, chosen_idx):
         """Updates the (load, demand) dataset values."""

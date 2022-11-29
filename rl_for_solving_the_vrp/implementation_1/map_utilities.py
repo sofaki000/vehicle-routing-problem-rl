@@ -7,18 +7,11 @@ from rl_for_solving_the_vrp.implementation_1.vrp import VehicleRoutingDataset
 
 map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
 map.create_map()
-coords = map.plot_buffer_around_thessaloniki(config.num_nodes)
-map.showMap(map_name="initial_map")
 
-xs = []
-ys = []
-for i in range(len(coords[0])):
-    x = coords[0][i]
-    y = coords[1][i]
-    xs.append(x)
-    ys.append(y)
+coords = map.get_random_points_within_thessaloniki(config.num_nodes)
+map.showMap("initial_map", open_in_browser=False, save_png=True)
 
-
+# locations: [x1,x2,...][y1,y2...]
 locations = torch.FloatTensor(coords)[None,:,:]
 
 train_data = VehicleRoutingDataset(num_samples=config.train_size,

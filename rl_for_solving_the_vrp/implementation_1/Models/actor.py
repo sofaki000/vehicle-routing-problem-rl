@@ -42,7 +42,7 @@ class DRL4TSP(nn.Module):
         if dynamic_size < 1:
             raise ValueError(':param dynamic_size: must be > 0, even if the problem has no dynamic elements')
 
-        self.update_fn = update_fn
+        self.update_dynamic_state = update_fn
         self.mask_fn = mask_fn
 
         # Define the encoder & decoder models
@@ -124,14 +124,15 @@ class DRL4TSP(nn.Module):
                 logp = prob.log()
 
             # After visiting a node update the dynamic representation
-            if self.update_fn is not None:
-                dynamic = self.update_fn(dynamic, ptr.data)
+            if self.update_dynamic_state is not None:
+                dynamic = self.update_dynamic_state(dynamic, ptr.data)
                 dynamic_hidden = self.dynamic_encoder(dynamic)
 
                 # Since we compute the VRP in minibatches, some tours may have
                 # number of stops. We force the vehicles to remain at the depot
-                # in these cases, and logp := 0
-                is_done = dynamic[:, 1].sum(1).eq(0).float()
+                # in these cases, and logp := 0. dynamic[:, 1]-> is the demands
+                are_demans_satisfied =dynamic[:, 1].sum(1).eq(0).float()
+                is_done = are_demans_satisfied
                 logp = logp * (1. - is_done)
 
             # And update the mask so we don't re-visit if we don't need to
