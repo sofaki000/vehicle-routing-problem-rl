@@ -5,54 +5,34 @@ The VRP is defined by the following traits:
     2. Each vehicle has a capacity (depends on problem), the must visit all cities
     3. When the vehicle load is 0, it __must__ return to the depot to refill
 """
-import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from torch.autograd import Variable
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-
 class VehicleRoutingDataset(Dataset):
-    def __init__(self, num_samples, input_size,   max_load=20, max_demand=9, seed=None, locations=None):
+    def __init__(self, num_samples, nodes_number,loads, demands, locations=None):
         super(VehicleRoutingDataset, self).__init__()
 
-        if max_load < max_demand:
-            raise ValueError(':param max_load: must be > max_demand')
-
-        if seed is None:
-            seed = np.random.randint(1234567890)
+        seed = np.random.randint(1234567890)
         np.random.seed(seed)
         torch.manual_seed(seed)
 
         self.num_samples = num_samples
-        self.max_load = max_load
-        self.max_demand = max_demand
+        # self.max_load = max_load
+        # self.max_demand = max_demand
 
         # Depot location will be the first node in each
         if locations is None:
-            locations = torch.rand((num_samples, 2, input_size + 1))
+            locations = torch.rand((num_samples, 2, nodes_number + 1))
         else:
             print("FOUND UR LOCATIONS WOHOO")
 
         self.static = locations
 
-        # All states will broadcast the drivers current load
-        # Note that we only use a load between [0, 1] to prevent large
-        # numbers entering the neural network
-        # dynamic_shape = (num_samples, 1, input_size + 1) why +1?
-        dynamic_shape = (num_samples, 1, input_size)
-        loads = torch.full(dynamic_shape, 1.)
-
-        # All states will have their own intrinsic demand in [1, max_demand),
-        # then scaled by the maximum load. E.g. if load=10 and max_demand=30,
-        # demands will be scaled to the range (0, 3)
-        demands = torch.randint(1, max_demand + 1, dynamic_shape)
-        demands = demands / float(max_load)
-
-        demands[:, 0, 0] = 0  # depot starts with a demand of 0
+        # loads, demands = get_random_loads_and_demands(num_samples, nodes_number)
         self.dynamic = torch.tensor(np.concatenate((loads, demands), axis=1))
 
     def __len__(self):
@@ -64,7 +44,6 @@ class VehicleRoutingDataset(Dataset):
 
     def update_mask(self, mask, dynamic, chosen_idx=None):
         """Updates the mask used to hide non-valid states.
-
         Parameters
         ----------
         dynamic: torch.autograd.Variable of size (1, num_feats, seq_len)

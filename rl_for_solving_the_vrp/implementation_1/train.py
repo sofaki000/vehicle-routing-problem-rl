@@ -10,7 +10,6 @@ import vrp
 from plot_utilities import save_plot_with_multiple_functions_in_same_figure
 from rl_for_solving_the_vrp.implementation_1 import config
 from rl_for_solving_the_vrp.implementation_1.validate import validate
-from vrp import VehicleRoutingDataset
 from  rl_for_solving_the_vrp.implementation_1.Models.critic import StateCritic
 
 device = config.device
@@ -146,7 +145,7 @@ def train_vrp(train_data, valid_data,   num_nodes, seed, hidden_size, num_layers
     # VRP50, Capacity 40:  11.39 (Greedy)
     # VRP100, Capacity 50: 17.23  (Greedy)
 
-    print('Starting VRP training')
+    print('Starting VRP training...')
     actor = DRL4TSP(config.STATIC_SIZE,
                     config.DYNAMIC_SIZE,
                     hidden_size,

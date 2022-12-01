@@ -5,7 +5,7 @@ thessaloniki_coordinates = [40.629269,  22.947412 ]
 
 seed = 12345
 test = False
-num_nodes = 4
+num_nodes = 5
 actor_lr = 5e-4
 critic_lr = 5e-4
 max_grad_norm = 2.

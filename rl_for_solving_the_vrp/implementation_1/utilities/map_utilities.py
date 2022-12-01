@@ -9,13 +9,13 @@ map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
 map.create_map()
 
 coords = map.get_random_points_within_thessaloniki(config.num_nodes)
-map.showMap("initial_map", open_in_browser=False, save_png=True)
+map.show_map("initial_map", open_in_browser=False, save_png=True)
 
 # locations: [x1,x2,...][y1,y2...]
 locations = torch.FloatTensor(coords)[None,:,:]
 
 train_data = VehicleRoutingDataset(num_samples=config.train_size,
-                                   input_size=config.num_nodes,
+                                   nodes_number=config.num_nodes,
                                    max_load=20,
                                    max_demand=9,
                                    seed=None,

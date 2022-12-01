@@ -1,12 +1,6 @@
-import webbrowser
-
 import folium as folium
 import geopandas as gpd
-from folium import Marker, GeoJson
-from folium.plugins import HeatMap
-
-from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.map_utilities import Map
+from folium import GeoJson
 
 releases = gpd.read_file("data/toxic_release_pennsylvania.shp")
 releases.head()
