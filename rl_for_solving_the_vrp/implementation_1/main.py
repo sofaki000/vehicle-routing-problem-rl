@@ -1,10 +1,10 @@
 import torch
 
 from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.map import Map
+from rl_for_solving_the_vrp.implementation_1.maps.map import Map
 from rl_for_solving_the_vrp.implementation_1.train import train_vrp
 from rl_for_solving_the_vrp.implementation_1.utilities.vrp_dataset_utilities import get_loads_and_demands_from_file, \
-    get_random_loads_and_demands, get_excel_data
+    get_excel_data
 from rl_for_solving_the_vrp.implementation_1.vrp import VehicleRoutingDataset
 
 torch.backends.cudnn.benchmark = True
@@ -12,9 +12,13 @@ torch.backends.cudnn.enabled = False
 
 if __name__ == '__main__':
     locations, loads, demands = get_excel_data(file_path=config.data_path)
+
+    map = Map(center=config.thessaloniki_coordinates, zoom_start=12)
+    map.add_markers_at_points(locations)
+    map.show_map("initial_map_v2", open_in_browser=True, save_png=True)
+
     locations = torch.FloatTensor(locations)[None,:,:]
     loads, demands = get_loads_and_demands_from_file(loads, demands)
-    # loads, demands = get_random_loads_and_demands(config.train_size, config.num_nodes)
 
     train_data = VehicleRoutingDataset(num_samples=config.train_size,
                                        nodes_number=config.num_nodes,
@@ -24,7 +28,6 @@ if __name__ == '__main__':
 
     result_tour_indixes = train_vrp(train_data=train_data,
                                     valid_data=train_data,
-                                    seed=config.seed,
                                     num_nodes=config.num_nodes,
                                     actor_lr=config.actor_lr,
                                     critic_lr=config.critic_lr,

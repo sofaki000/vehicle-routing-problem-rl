@@ -24,11 +24,9 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
 
         # W processes features from static decoder elements
-        self.v = nn.Parameter(torch.zeros((1, 1, hidden_size),
-                                          device=device, requires_grad=True))
+        self.v = nn.Parameter(torch.zeros((1, 1, hidden_size), device=device, requires_grad=True))
 
-        self.W = nn.Parameter(torch.zeros((1, hidden_size, 3 * hidden_size),
-                                          device=device, requires_grad=True))
+        self.W = nn.Parameter(torch.zeros((1, hidden_size, 3 * hidden_size), device=device, requires_grad=True))
 
     def forward(self, static_hidden, dynamic_hidden, decoder_hidden):
 
@@ -48,7 +46,6 @@ class Attention(nn.Module):
 
 class Pointer(nn.Module):
     """Calculates the next state given the previous state and input embeddings."""
-
     def __init__(self, hidden_size, num_layers=1, dropout=0.2):
         super(Pointer, self).__init__()
 
@@ -56,11 +53,9 @@ class Pointer(nn.Module):
         self.num_layers = num_layers
 
         # Used to calculate probability of selecting next state
-        self.v = nn.Parameter(torch.zeros((1, 1, hidden_size),
-                                          device=device, requires_grad=True))
+        self.v = nn.Parameter(torch.zeros((1, 1, hidden_size), device=device, requires_grad=True))
 
-        self.W = nn.Parameter(torch.zeros((1, hidden_size, 2 * hidden_size),
-                                          device=device, requires_grad=True))
+        self.W = nn.Parameter(torch.zeros((1, hidden_size, 2 * hidden_size), device=device, requires_grad=True))
 
         # Used to compute a representation of the current decoder output
         self.gru = nn.GRU(hidden_size, hidden_size, num_layers,
@@ -72,7 +67,6 @@ class Pointer(nn.Module):
         self.drop_hh = nn.Dropout(p=dropout)
 
     def forward(self, static_hidden, dynamic_hidden, decoder_hidden, last_hh):
-
         rnn_out, last_hh = self.gru(decoder_hidden.transpose(2, 1), last_hh)
         rnn_out = rnn_out.squeeze(1)
 

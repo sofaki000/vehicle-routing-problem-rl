@@ -44,8 +44,7 @@ class VehicleRoutingDataset(Dataset):
 
     def update_mask(self, mask, dynamic, chosen_idx=None):
         """Updates the mask used to hide non-valid states.
-        Parameters
-        ----------
+        Parameters  ----------
         dynamic: torch.autograd.Variable of size (1, num_feats, seq_len)
         """
 

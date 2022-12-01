@@ -33,8 +33,6 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
 
     train_loader = DataLoader(train_data, batch_size, True, num_workers=0)
     valid_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
-
-
     best_reward = np.inf
 
     mean_actor_rewards_per_epoch =  []
@@ -88,7 +86,6 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
                 start = end
                 mean_loss = np.mean(losses[-100:])
                 mean_reward = np.mean(rewards[-100:])
-
                 print('  Batch %d/%d, reward: %2.3f, loss: %2.4f, took: %2.4fs' %
                       (batch_idx, len(train_loader), mean_reward, mean_loss,
                        times[-1]))
@@ -113,7 +110,6 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
 
         # Save rendering of validation set tours
         valid_dir = os.path.join(save_dir, '%s' % epoch)
-
         mean_valid ,result_tour_indixes= validate(valid_loader, actor, reward_fn, render_fn, valid_dir, num_plot=5)
 
         # Save best model parameters
@@ -137,7 +133,7 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
     title=f"E:{num_epochs} actor_lr:{actor_lr}, critic_lr:{critic_lr}, num_nodes:{num_nodes}"
     save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title)
 
-def train_vrp(train_data, valid_data,   num_nodes, seed, hidden_size, num_layers,   dropout,
+def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers,   dropout,
               batch_size,  actor_lr,  critic_lr, max_grad_norm, num_epochs):
     # Goals from paper:
     # VRP10, Capacity 20:  4.84  (Greedy)
@@ -146,36 +142,21 @@ def train_vrp(train_data, valid_data,   num_nodes, seed, hidden_size, num_layers
     # VRP100, Capacity 50: 17.23  (Greedy)
 
     print('Starting VRP training...')
-    actor = DRL4TSP(config.STATIC_SIZE,
-                    config.DYNAMIC_SIZE,
-                    hidden_size,
-                    train_data.update_dynamic,
-                    train_data.update_mask,
-                    num_layers,
-                    dropout).to(device)
+    actor = DRL4TSP(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size,
+                    train_data.update_dynamic, train_data.update_mask,  num_layers, dropout).to(device)
 
-    critic = StateCritic(config.STATIC_SIZE,
-                         config.DYNAMIC_SIZE,
-                         hidden_size).to(device)
+    critic = StateCritic(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size).to(device)
 
 
     train(num_epochs=num_epochs,
-          actor=actor,
-          critic=critic,
-          num_nodes=num_nodes,
-          train_data=train_data,
-          valid_data= valid_data,
-          reward_fn= vrp.reward,
-          render_fn=vrp.render,
-          batch_size=batch_size,
-          actor_lr=actor_lr,
-          critic_lr=critic_lr,
+          actor=actor, critic=critic, num_nodes=num_nodes,
+          train_data=train_data,  valid_data= valid_data,
+          reward_fn= vrp.reward, render_fn=vrp.render,
+          batch_size=batch_size, actor_lr=actor_lr, critic_lr=critic_lr,
           max_grad_norm=max_grad_norm)
 
     test_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
-    out, result_tour_indixes = validate(test_loader,
-                                        actor,
-                                        vrp.reward,
+    out, result_tour_indixes = validate(test_loader, actor, vrp.reward,
                                         vrp.render,
                                         config.test_dir,
                                         num_plot=5)

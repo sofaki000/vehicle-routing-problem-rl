@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.map import Map
+from rl_for_solving_the_vrp.implementation_1.maps.map import Map
 
 
 def get_loads_and_demands_from_file(loads, demands):
@@ -16,6 +16,7 @@ def get_loads_and_demands_from_file(loads, demands):
     loads = torch.tensor(loads, dtype=torch.float32)[None, None, :]
     return loads, demands
 
+# loads, demands = get_random_loads_and_demands(config.train_size, config.num_nodes)
 
 def get_random_loads_and_demands(num_samples, input_size):
     max_load = 20
@@ -48,10 +49,10 @@ def get_excel_data(file_path):
     return [latitude_x.tolist(), longtitude_y.tolist()], loads,demands.tolist()
 
 
-locations, loads, demands = get_excel_data(file_path=config.data_path)
+#locations, loads, demands = get_excel_data(file_path=config.data_path)
 
-map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
-map.add_markers_at_points(locations)
-map.show_map("initial_map_meaningful", open_in_browser=True, save_png=True)
-
-
+# map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
+# map.add_markers_at_points(locations)
+# map.show_map("initial_map_meaningful", open_in_browser=True, save_png=True)
+#
+#

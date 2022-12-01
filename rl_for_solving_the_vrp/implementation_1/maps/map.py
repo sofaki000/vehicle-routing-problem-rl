@@ -30,7 +30,7 @@ class Map:
         city_map = self.map
     def show_map(self, map_name, open_in_browser=False, save_png=False):
         # Display the map
-        self.map.save(map_name)
+        self.map.save(f'{map_name}.png')
 
         if open_in_browser:
             webbrowser.open('file://' + os.path.realpath(f'{map_name}.html'))
