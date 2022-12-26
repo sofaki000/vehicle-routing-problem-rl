@@ -5,18 +5,20 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from Models.actor import DRL4TSP
-from rl_for_solving_the_vrp.implementation_1.Models.RLAgent import RLAgent
-from rl_for_solving_the_vrp.implementation_1.problem_variations import VRP_PROBLEM_DEMANDS_LOADS
+from models_impl_1.actor import DRL4TSP
+from rl_for_solving_the_vrp.src.agent import get_agent
+from rl_for_solving_the_vrp.src.models_impl_1.RLAgent_implt1 import RLAgent
+from rl_for_solving_the_vrp.src.models_impl_2.RLAgent_implt2 import RLAgent_implt2
+from rl_for_solving_the_vrp.src.problem_variations import VRP_PROBLEM_DEMANDS_LOADS
 from plot_utilities import save_plot_with_multiple_functions_in_same_figure
-from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.validate import validate
-from  rl_for_solving_the_vrp.implementation_1.Models.critic import StateCritic
+from rl_for_solving_the_vrp.src import config
+from rl_for_solving_the_vrp.src.validate import validate
+from  rl_for_solving_the_vrp.src.models_impl_1.critic import StateCritic
 
 device = config.device
 
 
-def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
+def train(agent, num_nodes, train_data, valid_data, reward_fn,
           render_fn, batch_size, actor_lr, critic_lr, max_grad_norm, num_epochs):
     """Constructs the main actor & critic networks, and performs all training."""
 
@@ -43,8 +45,7 @@ def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
     mean_actor_rewards_per_epoch =  []
     mean_critic_rewards_per_epoch = []
     for epoch in range(num_epochs):
-        actor.train()
-        critic.train()
+        agent.train()
 
         times, losses, rewards, critic_rewards = [], [], [], []
 
@@ -58,27 +59,24 @@ def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
             dynamic = dynamic.to(device)
             x0 = x0.to(device) if len(x0) > 0 else None
 
-            # Full forward pass through the dataset
-            # tour_indices, tour_logp = actor(static, dynamic, x0, distances=distances)
-            # # Query the critic for an estimate of the reward
-            # critic_est = critic(static, dynamic).view(-1)
             tour_indices, tour_logp, critic_est = agent(static, dynamic, x0, distances=distances)
 
 
             # Sum the log probabilities for each city in the tour
             reward = reward_fn(static, tour_indices)
             advantage = (reward - critic_est)
-            actor_loss = torch.mean(advantage.detach() * tour_logp.sum(dim=1))
+            # actor_loss = torch.mean(advantage.detach() * tour_logp.sum(dim=1))
+            actor_loss = torch.mean(advantage.detach() * tour_logp)
             critic_loss = torch.mean(advantage ** 2)
 
             actor_optim.zero_grad()
             actor_loss.backward()
-            torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(agent.ptnet.parameters(), max_grad_norm)
             actor_optim.step()
 
             critic_optim.zero_grad()
             critic_loss.backward()
-            torch.nn.utils.clip_grad_norm_(critic.parameters(), max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), max_grad_norm)
             critic_optim.step()
 
             critic_rewards.append(torch.mean(critic_est.detach()).item())
@@ -108,27 +106,29 @@ def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
             os.makedirs(epoch_dir)
 
         save_path = os.path.join(epoch_dir, 'actor.pt')
-        torch.save(actor.state_dict(), save_path)
+        torch.save(agent.ptnet.state_dict(), save_path)
 
         save_path = os.path.join(epoch_dir, 'critic.pt')
-        torch.save(critic.state_dict(), save_path)
+        torch.save(agent.critic.state_dict(), save_path)
 
         # Save rendering of validation set tours
         valid_dir = os.path.join(save_dir, '%s' % epoch)
-        mean_valid, result_tour_indixes= validate(valid_loader, actor, reward_fn, render_fn, valid_dir, num_plot=5)
+        #mean_valid, result_tour_indixes= validate(valid_loader, agent.ptnet, reward_fn, render_fn, valid_dir, num_plot=5)
 
-        # Save best model parameters
-        if mean_valid < best_reward:
-            best_reward = mean_valid
-
-            save_path = os.path.join(save_dir, 'actor.pt')
-            torch.save(actor.state_dict(), save_path)
-
-            save_path = os.path.join(save_dir, 'critic.pt')
-            torch.save(critic.state_dict(), save_path)
+        # # Save best model parameters
+        # if mean_valid < best_reward:
+        #     best_reward = mean_valid
+        #
+        #     save_path = os.path.join(save_dir, 'actor.pt')
+        #     torch.save(agent.ptnet.state_dict(), save_path)
+        #
+        #     save_path = os.path.join(save_dir, 'critic.pt')
+        #     torch.save(agent.critic.state_dict(), save_path)
 
         time_taken =  time.time() - epoch_start
-        print(f'Mean epoch loss/reward: {mean_loss:.4f}, {mean_reward:.4f}, {mean_valid:.4f}, took: {time_taken:.4f}s ({ np.mean(times):.4f}s / 100 batches)\n')
+        #print(f'Mean epoch loss/reward: {mean_loss:.4f}, {mean_reward:.4f}, {mean_valid:.4f}, took: {time_taken:.4f}s ({ np.mean(times):.4f}s / 100 batches)\n')
+        print(
+        f'Mean epoch loss/reward: {mean_loss:.4f}, {mean_reward:.4f}, took: {time_taken:.4f}s ({np.mean(times):.4f}s / 100 batches)\n')
 
     # all epochs finished
     # we plot mean_actor_rewards_per_epoch, mean_critic_rewards_per_epoch
@@ -138,7 +138,7 @@ def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
     title=f"E:{num_epochs} actor_lr:{actor_lr}, critic_lr:{critic_lr}, num_nodes:{num_nodes}"
     save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title)
 
-def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers, dropout,
+def train_vrp(agent, train_data, valid_data,   num_nodes, hidden_size, num_layers, dropout,
               batch_size,  actor_lr,  critic_lr, max_grad_norm, num_epochs):
     # Goals from paper:
     # VRP10, Capacity 20:  4.84  (Greedy)
@@ -148,33 +148,10 @@ def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers, drop
 
     print('Starting VRP training...')
 
-    agent = RLAgent(hidden_size=hidden_size, update_dynamic=train_data.update_dynamic,
-                      update_mask=train_data.update_mask, num_layers=num_layers, dropout=dropout,
-                      initialize_mask_fn=None)
-    if hasattr(train_data, 'initial_update_mask'):
-        # einai evr problem
-        actor = DRL4TSP(config.STATIC_SIZE,
-                        config.DYNAMIC_SIZE,
-                        hidden_size=hidden_size,
-                        update_fn=train_data.update_dynamic,
-                        mask_fn=train_data.update_mask,
-                        num_layers=num_layers, dropout=dropout,
-                        initialize_mask_fn= train_data.initial_update_mask).to(device)
-    else:
-        actor = DRL4TSP(config.STATIC_SIZE,
-                        config.DYNAMIC_SIZE,
-                        hidden_size,
-                        update_fn= train_data.update_dynamic,
-                        mask_fn=train_data.update_mask,initialize_mask_fn=None,
-                        num_layers=num_layers, dropout=dropout).to(device)
-
-    critic = StateCritic(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size).to(device)
-
 
     train(agent=agent,
           num_epochs=num_epochs,
-          actor=actor,
-          critic=critic, num_nodes=num_nodes,
+          num_nodes=num_nodes,
           train_data=train_data, valid_data= valid_data,
           reward_fn= VRP_PROBLEM_DEMANDS_LOADS.reward,
           render_fn=VRP_PROBLEM_DEMANDS_LOADS.render,
@@ -183,11 +160,11 @@ def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers, drop
 
     test_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
 
-    out, result_tour_indixes = validate(test_loader, actor,
-                                        VRP_PROBLEM_DEMANDS_LOADS.reward,
-                                        VRP_PROBLEM_DEMANDS_LOADS.render,
-                                        config.test_dir,
-                                        num_plot=5)
-
-    print('Average tour length: ', out)
+    # out, result_tour_indixes = validate(test_loader, agent.ptnet,
+    #                                     VRP_PROBLEM_DEMANDS_LOADS.reward,
+    #                                     VRP_PROBLEM_DEMANDS_LOADS.render,
+    #                                     config.test_dir,
+    #                                     num_plot=5)
+    result_tour_indixes = []
+    #print('Average tour length: ', out)
     return result_tour_indixes

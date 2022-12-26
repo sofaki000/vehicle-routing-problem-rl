@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import torch
-from rl_for_solving_the_vrp.implementation_1 import config
+from rl_for_solving_the_vrp.src import config
 
 device = config.device
 
@@ -16,9 +16,7 @@ def validate(data_loader, actor, reward_fn, render_fn=None, save_dir='.', num_pl
     rewards = []
     result_tour_indixes = []
     for batch_idx, batch in enumerate(data_loader):
-
         static, dynamic, x0 , _ = batch
-
         static = static.to(device)
         dynamic = dynamic.to(device)
         x0 = x0.to(device) if len(x0) > 0 else None

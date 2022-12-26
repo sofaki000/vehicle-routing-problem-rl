@@ -40,7 +40,7 @@ class Attention(nn.Module):
         W = self.W.expand(batch_size, hidden_size, -1)
 
         attns = torch.bmm(v, torch.tanh(torch.bmm(W, hidden)))
-        attns = F.softmax(attns, dim=2)  # (batch, seq_len)
+        attns = F.softmax(attns, dim=2)  # (batch,1, seq_len) # auto edw einai  (batch, 1, 7?)
         return attns
 
 

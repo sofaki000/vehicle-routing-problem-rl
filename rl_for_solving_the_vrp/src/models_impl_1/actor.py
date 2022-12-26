@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from rl_for_solving_the_vrp.implementation_1.Models.pointer_network import Encoder, Pointer
+from rl_for_solving_the_vrp.src.models_impl_1.pointer_network import Encoder, Pointer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -126,7 +126,7 @@ class DRL4TSP(nn.Module):
             probs = F.softmax(probs + mask.log(), dim=1)
 
             # poly kako:
-            probs =torch.nan_to_num(probs)
+            #probs =torch.nan_to_num(probs)
             # When training, sample the next step according to its probability.
             # During testing, we can take the greedy approach and choose highest
             if self.training:
@@ -151,7 +151,10 @@ class DRL4TSP(nn.Module):
                 # number of stops. We force the vehicles to remain at the depot
                 # in these cases, and logp := 0. dynamic[:, 1]-> is the demands
                 # nmz edw thelei dynamic[:, 2, :]
-                are_demans_satisfied = dynamic[:, 1].sum(1).eq(0).float()
+                if dynamic.shape[1]==2: # edw einai otan load,demand to dynamis
+                    are_demans_satisfied = dynamic[:, 1].sum(1).eq(0).float()
+                if dynamic.shape[1]==3: # edw to dynamic einai (time,fuel,demand)
+                    are_demans_satisfied = dynamic[:, 2, :].sum(1).eq(0).float()
                 is_done = are_demans_satisfied
                 logp = logp * (1. - is_done)
 
@@ -162,8 +165,8 @@ class DRL4TSP(nn.Module):
             tour_logp.append(logp.unsqueeze(1))
             tour_idx.append(ptr.data.unsqueeze(1))
 
-            old_idx = ptr.data
-            decoder_input = torch.gather(static, 2, ptr.view(-1, 1, 1)  .expand(-1, input_size, 1)).detach()
+            old_idx = ptr.data.detach()
+            decoder_input = torch.gather(static, 2, ptr.view(-1, 1, 1).expand(-1, input_size, 1)).detach()
 
         tour_idx = torch.cat(tour_idx, dim=1)  # (batch_size, seq_len)
         tour_logp = torch.cat(tour_logp, dim=1)  # (batch_size, seq_len)

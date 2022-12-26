@@ -7,7 +7,7 @@ import numpy as np
 from selenium.webdriver.chrome import webdriver
 from shapely.geometry import Point
 import os
-from rl_for_solving_the_vrp.implementation_1 import config
+from rl_for_solving_the_vrp.src import config
 import io
 from PIL import Image
 

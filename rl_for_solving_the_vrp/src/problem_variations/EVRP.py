@@ -3,7 +3,7 @@ import torch
 import os
 import numpy as np
 
-from rl_for_solving_the_vrp.implementation_1 import config
+from rl_for_solving_the_vrp.src import config
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

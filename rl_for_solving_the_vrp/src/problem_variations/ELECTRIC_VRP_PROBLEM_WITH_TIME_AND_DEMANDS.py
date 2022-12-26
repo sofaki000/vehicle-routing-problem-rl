@@ -5,7 +5,7 @@ import os
 import time
 import numpy as np
 
-from rl_for_solving_the_vrp.implementation_1 import config
+from rl_for_solving_the_vrp.src import config
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -176,7 +176,7 @@ class EVRP_WITH_TIME_AND_DEMANDS(Dataset):
     #                    velocity,
     #                    cons_rate,
     #                    t_limit, num_afs):
-    def update_dynamic(self, dynamic, idx, old_idx):
+    def update_dynamic(self, dynamic, idx, old_idx, distances=None):
             """
             :param old_idx: (batch*beam, 1)
             :param idx: ditto
@@ -192,15 +192,16 @@ class EVRP_WITH_TIME_AND_DEMANDS(Dataset):
             capacity = self.capacity
             cons_rate = self.cons_rate
             velocity= self.velocity
-            distances =  self.batch_distances
-            # dis = distances[torch.arange(distances.size(0)), old_idx.squeeze(1), idx.squeeze(1)].unsqueeze(1)
+            if distances is None:
+                distances = self.batch_distances
+            else:
+                distances = distances
             dis = distances[torch.arange(distances.size(0)), old_idx.squeeze(1), idx].unsqueeze(1)
-            #depot = idx.eq(0).squeeze(1)
+
             depot = idx.eq(0)
-            # afs = (idx.gt(0) & idx.le(num_afs)).squeeze(1)
             afs = (idx.gt(0) & idx.le(num_afs))
-            fs = idx.le(num_afs) #.squeeze(1)
-            customer = idx.gt(num_afs) #.squeeze(1)  # TODO: introduce num_afs
+            fs = idx.le(num_afs)
+            customer = idx.gt(num_afs)
             time = dynamic[:, 0, :].clone()
             fuel = dynamic[:, 1, :].clone()
             demands = dynamic[:, 2, :].clone()

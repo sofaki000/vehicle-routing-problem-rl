@@ -1,11 +1,14 @@
 import torch
-from rl_for_solving_the_vrp.implementation_1 import config
+
+from rl_for_solving_the_vrp.problem import get_problem
+from rl_for_solving_the_vrp.src import config
 from maps.folium_map_utilities.folium_map import plot_locations_visited_map
-from rl_for_solving_the_vrp.implementation_1.problem_variations.ELECTRIC_VRP_PROBLEM_WITH_TIME_AND_DEMANDS import \
+from rl_for_solving_the_vrp.src.agent import get_agent
+from rl_for_solving_the_vrp.src.problem_variations.ELECTRIC_VRP_PROBLEM_WITH_TIME_AND_DEMANDS import \
     EVRP_WITH_TIME_AND_DEMANDS
-from rl_for_solving_the_vrp.implementation_1.train import train_vrp
+from rl_for_solving_the_vrp.src.train import train_vrp
 from data.vrp_dataset_utilities import get_excel_data,  get_loads_and_demands
-from rl_for_solving_the_vrp.implementation_1.problem_variations.VRP_PROBLEM_DEMANDS_LOADS import VehicleRoutingDataset
+from rl_for_solving_the_vrp.src.problem_variations.VRP_PROBLEM_DEMANDS_LOADS import VehicleRoutingDataset
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = False
@@ -13,27 +16,20 @@ torch.backends.cudnn.enabled = False
 if __name__ == '__main__':
     # gets random data for training
     loads, demands = get_loads_and_demands(use_test_data=True)
-    train_data = VehicleRoutingDataset(num_samples=config.train_size,
-                                       nodes_number=config.num_nodes,
-                                       loads=loads,
-                                       demands=demands,
-                                       locations=None)
+    train_data = get_problem(evrp=False, loads=loads, demands=demands)
+
     # loads excel data
     loads, demands = get_loads_and_demands(use_test_data=False)
-    validation_data = VehicleRoutingDataset(num_samples=config.valid_size,
-                                       nodes_number=config.num_nodes,
-                                       loads=loads,
-                                       demands=demands,
-                                       locations=None)
+    validation_data = get_problem(evrp=False, loads=loads, demands=demands)
 
-    # train_data = EVRP_WITH_TIME_AND_DEMANDS(train_size=config.train_size,
-    #                                         num_nodes=config.num_nodes,
-    #                                         t_limit=config.t_limit,
-    #                                         capacity=config.capacity, num_afs=config.num_afs,
-    #                                         velocity=config.velocity,
-    #                                         seed=config.seed)
 
-    result_tour_indixes = train_vrp(train_data=train_data,
+    train_data = get_problem(evrp= True)
+
+    evrp = True  # solve evrp problem
+    agent = get_agent(evrp, train_data, config.hidden_size, config.layers, config.dropout)
+
+    result_tour_indixes = train_vrp(agent=agent,
+                                    train_data=train_data,
                                     valid_data=train_data,
                                     num_nodes=config.num_nodes,
                                     actor_lr=config.actor_lr,

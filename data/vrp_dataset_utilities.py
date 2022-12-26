@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 
 # this utilities are for the demands-loads problem.
-from rl_for_solving_the_vrp.implementation_1 import config
+from rl_for_solving_the_vrp.src import config
 
 
 def get_loads_and_demands(use_test_data=True):
