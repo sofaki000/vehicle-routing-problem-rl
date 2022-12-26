@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from rl_for_solving_the_vrp.implementation_1.Models.pointer_network import Encoder, Pointer, Attention
+from rl_for_solving_the_vrp.implementation_1.Models.pointer_network import Encoder, Pointer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -36,7 +36,10 @@ class DRL4TSP(nn.Module):
         Defines the dropout rate for the decoder
     """
 
-    def __init__(self, static_size, dynamic_size, hidden_size, update_fn=None, mask_fn=None, num_layers=1, dropout=0.):
+    def __init__(self, static_size, dynamic_size,
+                 hidden_size, update_fn=None,
+                 mask_fn=None,initialize_mask_fn=None,
+                 num_layers=1, dropout=0.):
         super(DRL4TSP, self).__init__()
 
         if dynamic_size < 1:
@@ -44,10 +47,14 @@ class DRL4TSP(nn.Module):
 
         self.update_dynamic_state = update_fn
         self.mask_fn = mask_fn
+        self.initialize_mask_fn = initialize_mask_fn
 
         # Define the encoder & decoder models
         self.static_encoder = Encoder(static_size, hidden_size)
         self.dynamic_encoder = Encoder(dynamic_size, hidden_size)
+
+        # self.decoder = Encoder(static_size, hidden_size)
+        # autos gt to thelei kapws Encoder(num_nodes)?
         self.decoder = Encoder(static_size, hidden_size)
         self.pointer = Pointer(hidden_size, num_layers, dropout)
 
@@ -58,7 +65,7 @@ class DRL4TSP(nn.Module):
         # Used as a proxy initial state in the decoder when not specified
         self.x0 = torch.zeros((1, static_size, 1), requires_grad=True, device=device)
 
-    def forward(self, static, dynamic, decoder_input=None, last_hh=None):
+    def forward(self, static, dynamic, decoder_input=None, last_hh=None, distances=None):
         """
         Parameters
         ----------
@@ -82,8 +89,14 @@ class DRL4TSP(nn.Module):
         if decoder_input is None:
             decoder_input = self.x0.expand(batch_size, -1, -1)
 
-        # Always use a mask - if no function is provided, we don't update it
-        mask = torch.ones(batch_size, sequence_size, device=device)
+
+        if self.initialize_mask_fn is None:
+            # gia to load-demand problem
+            # Always use a mask - if no function is provided, we don't update it
+            mask = torch.ones(batch_size, sequence_size, device=device)
+        else:
+            # to decoder_input einai auto pou gyrnaei to dataset. to balame na gyrnaei ta batch distances
+            mask = self.initialize_mask_fn(distances)
 
         # Structures for holding the output sequences
         tour_idx, tour_logp = [], []
@@ -95,6 +108,9 @@ class DRL4TSP(nn.Module):
         static_hidden = self.static_encoder(static)
         dynamic_hidden = self.dynamic_encoder(dynamic)
 
+        # for evrp it is needed to hold old index information to calculate
+        # how much fuel is lost
+        old_idx = torch.zeros(batch_size, 1, dtype=torch.long, device=device)
         for _ in range(max_steps):
 
             if not mask.byte().any():
@@ -106,8 +122,11 @@ class DRL4TSP(nn.Module):
             probs, last_hh = self.pointer(static_hidden,
                                           dynamic_hidden,
                                           decoder_hidden, last_hh)
+            # an to mask exei 1 pas. an exei 0 den pas
             probs = F.softmax(probs + mask.log(), dim=1)
 
+            # poly kako:
+            probs =torch.nan_to_num(probs)
             # When training, sample the next step according to its probability.
             # During testing, we can take the greedy approach and choose highest
             if self.training:
@@ -118,20 +137,21 @@ class DRL4TSP(nn.Module):
                 ptr = m.sample()
                 while not torch.gather(mask, 1, ptr.data.unsqueeze(1)).byte().all():
                     ptr = m.sample()
-                logp = m.log_prob(ptr)
+                logp = m.log_prob(ptr) # apo to probabilities tou kathe action (aka to policy), pairnoume to log exaitias REINFORCE algorithm
             else:
                 prob, ptr = torch.max(probs, 1)  # Greedy
                 logp = prob.log()
 
             # After visiting a node update the dynamic representation
             if self.update_dynamic_state is not None:
-                dynamic = self.update_dynamic_state(dynamic, ptr.data)
+                dynamic = self.update_dynamic_state(dynamic, ptr.data, old_idx)
                 dynamic_hidden = self.dynamic_encoder(dynamic)
 
                 # Since we compute the VRP in minibatches, some tours may have
                 # number of stops. We force the vehicles to remain at the depot
                 # in these cases, and logp := 0. dynamic[:, 1]-> is the demands
-                are_demans_satisfied =dynamic[:, 1].sum(1).eq(0).float()
+                # nmz edw thelei dynamic[:, 2, :]
+                are_demans_satisfied = dynamic[:, 1].sum(1).eq(0).float()
                 is_done = are_demans_satisfied
                 logp = logp * (1. - is_done)
 
@@ -142,6 +162,7 @@ class DRL4TSP(nn.Module):
             tour_logp.append(logp.unsqueeze(1))
             tour_idx.append(ptr.data.unsqueeze(1))
 
+            old_idx = ptr.data
             decoder_input = torch.gather(static, 2, ptr.view(-1, 1, 1)  .expand(-1, input_size, 1)).detach()
 
         tour_idx = torch.cat(tour_idx, dim=1)  # (batch_size, seq_len)

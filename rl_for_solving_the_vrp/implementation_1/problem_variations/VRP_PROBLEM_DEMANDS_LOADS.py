@@ -40,7 +40,8 @@ class VehicleRoutingDataset(Dataset):
 
     def __getitem__(self, idx):
         # (static, dynamic, start_loc)
-        return (self.static[idx], self.dynamic[idx], self.static[idx, :, 0:1])
+        # empty array for compatibility
+        return (self.static[idx], self.dynamic[idx], self.static[idx, :, 0:1], [])
 
     def update_mask(self, mask, dynamic, chosen_idx=None):
         """Updates the mask used to hide non-valid states.
@@ -82,7 +83,7 @@ class VehicleRoutingDataset(Dataset):
 
         return new_mask_with_allowed_cities.float()
 
-    def update_dynamic(self, dynamic, chosen_idx):
+    def update_dynamic(self, dynamic, chosen_idx, old_idx):
         """Updates the (load, demand) dataset values."""
 
         # Update the dynamic elements differently for if we visit depot vs. a city

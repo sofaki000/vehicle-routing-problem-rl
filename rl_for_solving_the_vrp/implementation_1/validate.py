@@ -17,7 +17,7 @@ def validate(data_loader, actor, reward_fn, render_fn=None, save_dir='.', num_pl
     result_tour_indixes = []
     for batch_idx, batch in enumerate(data_loader):
 
-        static, dynamic, x0 = batch
+        static, dynamic, x0 , _ = batch
 
         static = static.to(device)
         dynamic = dynamic.to(device)

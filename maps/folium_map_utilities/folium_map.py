@@ -11,9 +11,10 @@ from rl_for_solving_the_vrp.implementation_1 import config
 import io
 from PIL import Image
 
-map_dir = 'folium_map_utilities'
+map_dir = 'C:\\Users\\Lenovo\\Desktop\\Διπλωματική\\vehicle-routing-problem-rl\\maps\\folium_map_utilities'
 os.makedirs(map_dir, exist_ok=True)
 map_name = f"{map_dir}/thessaloniki_map.html"
+
 before_visiting_img_name = f"{map_dir}/initial_map.png"
 after_visiting_map_name = f"{map_dir}/after_visiting_map"
 after_visiting_map_name_html =  f"{after_visiting_map_name}.html"

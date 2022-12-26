@@ -6,6 +6,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from Models.actor import DRL4TSP
+from rl_for_solving_the_vrp.implementation_1.Models.RLAgent import RLAgent
 from rl_for_solving_the_vrp.implementation_1.problem_variations import VRP_PROBLEM_DEMANDS_LOADS
 from plot_utilities import save_plot_with_multiple_functions_in_same_figure
 from rl_for_solving_the_vrp.implementation_1 import config
@@ -15,7 +16,7 @@ from  rl_for_solving_the_vrp.implementation_1.Models.critic import StateCritic
 device = config.device
 
 
-def train(actor, critic, num_nodes, train_data, valid_data, reward_fn,
+def train(agent, actor, critic, num_nodes, train_data, valid_data, reward_fn,
           render_fn, batch_size, actor_lr, critic_lr, max_grad_norm, num_epochs):
     """Constructs the main actor & critic networks, and performs all training."""
 
@@ -29,8 +30,11 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn,
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
-    critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
+    actor_optim = torch.optim.Adam(agent.ptnet.parameters(), lr=actor_lr)
+    critic_optim = torch.optim.Adam(agent.critic.parameters(), lr=critic_lr)
+
+    # actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
+    # critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
 
     train_loader = DataLoader(train_data, batch_size, True, num_workers=0)
     valid_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
@@ -48,21 +52,21 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn,
         start = epoch_start
 
         for batch_idx, batch in enumerate(train_loader):
-            static, dynamic, x0 = batch
+            static, dynamic, x0, distances = batch
 
             static = static.to(device)
             dynamic = dynamic.to(device)
             x0 = x0.to(device) if len(x0) > 0 else None
 
             # Full forward pass through the dataset
-            tour_indices, tour_logp = actor(static, dynamic, x0)
+            # tour_indices, tour_logp = actor(static, dynamic, x0, distances=distances)
+            # # Query the critic for an estimate of the reward
+            # critic_est = critic(static, dynamic).view(-1)
+            tour_indices, tour_logp, critic_est = agent(static, dynamic, x0, distances=distances)
+
 
             # Sum the log probabilities for each city in the tour
             reward = reward_fn(static, tour_indices)
-
-            # Query the critic for an estimate of the reward
-            critic_est = critic(static, dynamic).view(-1)
-
             advantage = (reward - critic_est)
             actor_loss = torch.mean(advantage.detach() * tour_logp.sum(dim=1))
             critic_loss = torch.mean(advantage ** 2)
@@ -130,7 +134,7 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn,
     # we plot mean_actor_rewards_per_epoch, mean_critic_rewards_per_epoch
     results = [mean_critic_rewards_per_epoch, mean_actor_rewards_per_epoch]
     labels = ["critic rewards", "actor rewards"]
-    file_name="results/actor_critic_rewards"
+    file_name="results/SPECIALactor_critic_rewards"
     title=f"E:{num_epochs} actor_lr:{actor_lr}, critic_lr:{critic_lr}, num_nodes:{num_nodes}"
     save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title)
 
@@ -143,16 +147,32 @@ def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers, drop
     # VRP100, Capacity 50: 17.23  (Greedy)
 
     print('Starting VRP training...')
-    actor = DRL4TSP(config.STATIC_SIZE,
-                    config.DYNAMIC_SIZE,
-                    hidden_size,
-                    train_data.update_dynamic, train_data.update_mask,
-                    num_layers, dropout).to(device)
+
+    agent = RLAgent(hidden_size=hidden_size, update_dynamic=train_data.update_dynamic,
+                      update_mask=train_data.update_mask, num_layers=num_layers, dropout=dropout,
+                      initialize_mask_fn=None)
+    if hasattr(train_data, 'initial_update_mask'):
+        # einai evr problem
+        actor = DRL4TSP(config.STATIC_SIZE,
+                        config.DYNAMIC_SIZE,
+                        hidden_size=hidden_size,
+                        update_fn=train_data.update_dynamic,
+                        mask_fn=train_data.update_mask,
+                        num_layers=num_layers, dropout=dropout,
+                        initialize_mask_fn= train_data.initial_update_mask).to(device)
+    else:
+        actor = DRL4TSP(config.STATIC_SIZE,
+                        config.DYNAMIC_SIZE,
+                        hidden_size,
+                        update_fn= train_data.update_dynamic,
+                        mask_fn=train_data.update_mask,initialize_mask_fn=None,
+                        num_layers=num_layers, dropout=dropout).to(device)
 
     critic = StateCritic(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size).to(device)
 
 
-    train(num_epochs=num_epochs,
+    train(agent=agent,
+          num_epochs=num_epochs,
           actor=actor,
           critic=critic, num_nodes=num_nodes,
           train_data=train_data, valid_data= valid_data,
