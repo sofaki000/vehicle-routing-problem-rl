@@ -1,14 +1,22 @@
 import numpy as np
 import pandas as pd
 import torch
-from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.maps.map import Map
 
+# this utilities are for the demands-loads problem.
+from rl_for_solving_the_vrp.implementation_1 import config
+
+
+def get_loads_and_demands(use_test_data=True):
+    if use_test_data:
+        loads, demands = get_random_loads_and_demands(config.train_size, config.num_nodes)
+    else:
+        locations, loads, demands = get_excel_data(file_path=config.data_path)
+        loads, demands = get_loads_and_demands_from_file(loads, demands)
+    return loads, demands
 
 def get_loads_and_demands_from_file(loads, demands):
     depot_loads = np.max(loads)
     loads = [depot_loads/depot_loads for i in range(len(demands))]
-
 
     demands = torch.tensor(demands) / float(depot_loads)
     demands = demands[None, None, :] # prepei na exei shape: (num_samples, 1 , num_nodes)
@@ -38,9 +46,9 @@ def get_random_loads_and_demands(num_samples, input_size):
     demands[:, 0, 0] = 0  # depot starts with a demand of 0
 
     return loads, demands
+
 def get_excel_data(file_path):
     df = pd.read_excel(file_path)
-
     df = pd.DataFrame(df)
     latitude_x = df.iloc[:, 1]
     longtitude_y = df.iloc[:, 2]

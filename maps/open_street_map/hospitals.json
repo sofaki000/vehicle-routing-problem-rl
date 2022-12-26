@@ -1,0 +1,62 @@
+[
+    {
+       "id":"1",
+       "name":"Southern California Hospital at Hollywood",
+       "lat":"34.1118016",
+       "long":"-118.2848717",
+       "score":68,
+       "empty_bed":10,
+       "specialities":[
+           "eye",
+           "ear"
+       ]
+    },
+    {
+       "id":"2",
+       "name":"Keck Hospital of USC",
+       "lat":"35.7131699",
+       "long":"51.3784919",
+       "score":30,
+       "empty_bed":20,
+       "specialities":[
+           "eye",
+           "ear"
+        ]
+    },
+    {
+       "id":"3",
+       "name":"Southern California Hospital at Culver City",
+       "lat":"35.7131699",
+       "long":"51.3784919",
+       "score":32,
+       "empty_bed":30,
+       "specialities":[
+           "eye",
+           "ear"
+        ]
+    },
+    {
+       "id":"4",
+       "name":"Dignity Health - California Hospital Medical Center",
+       "lat":"36.38220428075101",
+       "long":"-119.01566748685103",
+       "score":53,
+       "empty_bed":66,
+       "specialities":[
+           "eye",
+           "ear"
+        ]
+    },
+    {
+       "id":"5",
+       "name":"LAC+USC Medical Center",
+       "lat":"33.93997997052091",
+       "long":"-118.63514061133456",
+       "score":43,
+       "empty_bed":33,
+       "specialities":[
+            "eye",
+            "ear"
+        ]
+    }
+]

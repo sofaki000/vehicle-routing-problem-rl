@@ -1,30 +1,22 @@
 import torch
-
 from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.maps.map import Map
+from maps.folium_map_utilities.folium_map import plot_locations_visited_map
 from rl_for_solving_the_vrp.implementation_1.train import train_vrp
-from rl_for_solving_the_vrp.implementation_1.utilities.vrp_dataset_utilities import get_loads_and_demands_from_file, \
-    get_excel_data
-from rl_for_solving_the_vrp.implementation_1.vrp import VehicleRoutingDataset
+from data.vrp_dataset_utilities import get_excel_data,  get_loads_and_demands
+from rl_for_solving_the_vrp.implementation_1.problem_variations.VRP_PROBLEM_DEMANDS_LOADS import VehicleRoutingDataset
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = False
 
 if __name__ == '__main__':
-    locations, loads, demands = get_excel_data(file_path=config.data_path)
 
-    map = Map(center=config.thessaloniki_coordinates, zoom_start=12)
-    map.add_markers_at_points(locations)
-    map.show_map("initial_map_v2", open_in_browser=True, save_png=True)
-
-    locations = torch.FloatTensor(locations)[None,:,:]
-    loads, demands = get_loads_and_demands_from_file(loads, demands)
+    loads, demands = get_loads_and_demands(use_test_data=True)
 
     train_data = VehicleRoutingDataset(num_samples=config.train_size,
                                        nodes_number=config.num_nodes,
                                        loads=loads,
                                        demands=demands,
-                                       locations=locations)
+                                       locations=None)
 
     result_tour_indixes = train_vrp(train_data=train_data,
                                     valid_data=train_data,
@@ -38,21 +30,10 @@ if __name__ == '__main__':
                                     num_layers=config.layers,
                                     num_epochs=config.num_epochs)
 
-    locations = locations.squeeze(0).numpy()
-    xs = [locations[0][i] for i in result_tour_indixes][0][0]
-    ys = [locations[1][i] for i in result_tour_indixes][0][0]
+    locations, loads, demands = get_excel_data(file_path=config.data_path)
+    locations = torch.FloatTensor(locations)[None, :, :]
+    plot_locations_visited_map(locations, result_tour_indixes)
 
-    print(f'Resulting tour is : {result_tour_indixes}')
-    number_of_stops = len(xs)
-    points_visiting = []
-
-    for i in range(number_of_stops):
-        x = xs[i]
-        y = ys[i]
-        points_visiting.append([x, y])
-
-    map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
-    map.plot_lines_between_points(points_visiting, show_map=True)
 
 
     # # Determines the maximum amount of load for a vehicle based on num nodes

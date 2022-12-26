@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from rl_for_solving_the_vrp.implementation_1.Models.base_models import Encoder, Pointer, Attention
+from rl_for_solving_the_vrp.implementation_1.Models.pointer_network import Encoder, Pointer, Attention
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

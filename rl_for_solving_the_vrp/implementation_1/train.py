@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from Models.actor import DRL4TSP
-import vrp
+from rl_for_solving_the_vrp.implementation_1.problem_variations import VRP_PROBLEM_DEMANDS_LOADS
 from plot_utilities import save_plot_with_multiple_functions_in_same_figure
 from rl_for_solving_the_vrp.implementation_1 import config
 from rl_for_solving_the_vrp.implementation_1.validate import validate
@@ -15,7 +15,8 @@ from  rl_for_solving_the_vrp.implementation_1.Models.critic import StateCritic
 device = config.device
 
 
-def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn, batch_size, actor_lr, critic_lr, max_grad_norm, num_epochs):
+def train(actor, critic, num_nodes, train_data, valid_data, reward_fn,
+          render_fn, batch_size, actor_lr, critic_lr, max_grad_norm, num_epochs):
     """Constructs the main actor & critic networks, and performs all training."""
 
     now = '%s' % datetime.datetime.now().time()
@@ -80,7 +81,7 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
             rewards.append(torch.mean(reward.detach()).item())
             losses.append(torch.mean(actor_loss.detach()).item())
 
-            if (batch_idx + 1) % 100 == 0:
+            if (batch_idx + 1) % 10 == 0:
                 end = time.time()
                 times.append(end - start)
                 start = end
@@ -110,7 +111,7 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
 
         # Save rendering of validation set tours
         valid_dir = os.path.join(save_dir, '%s' % epoch)
-        mean_valid ,result_tour_indixes= validate(valid_loader, actor, reward_fn, render_fn, valid_dir, num_plot=5)
+        mean_valid, result_tour_indixes= validate(valid_loader, actor, reward_fn, render_fn, valid_dir, num_plot=5)
 
         # Save best model parameters
         if mean_valid < best_reward:
@@ -133,7 +134,7 @@ def train(actor, critic, num_nodes, train_data, valid_data, reward_fn, render_fn
     title=f"E:{num_epochs} actor_lr:{actor_lr}, critic_lr:{critic_lr}, num_nodes:{num_nodes}"
     save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title)
 
-def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers,   dropout,
+def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers, dropout,
               batch_size,  actor_lr,  critic_lr, max_grad_norm, num_epochs):
     # Goals from paper:
     # VRP10, Capacity 20:  4.84  (Greedy)
@@ -142,22 +143,29 @@ def train_vrp(train_data, valid_data,   num_nodes, hidden_size, num_layers,   dr
     # VRP100, Capacity 50: 17.23  (Greedy)
 
     print('Starting VRP training...')
-    actor = DRL4TSP(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size,
-                    train_data.update_dynamic, train_data.update_mask,  num_layers, dropout).to(device)
+    actor = DRL4TSP(config.STATIC_SIZE,
+                    config.DYNAMIC_SIZE,
+                    hidden_size,
+                    train_data.update_dynamic, train_data.update_mask,
+                    num_layers, dropout).to(device)
 
     critic = StateCritic(config.STATIC_SIZE, config.DYNAMIC_SIZE, hidden_size).to(device)
 
 
     train(num_epochs=num_epochs,
-          actor=actor, critic=critic, num_nodes=num_nodes,
-          train_data=train_data,  valid_data= valid_data,
-          reward_fn= vrp.reward, render_fn=vrp.render,
+          actor=actor,
+          critic=critic, num_nodes=num_nodes,
+          train_data=train_data, valid_data= valid_data,
+          reward_fn= VRP_PROBLEM_DEMANDS_LOADS.reward,
+          render_fn=VRP_PROBLEM_DEMANDS_LOADS.render,
           batch_size=batch_size, actor_lr=actor_lr, critic_lr=critic_lr,
           max_grad_norm=max_grad_norm)
 
     test_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
-    out, result_tour_indixes = validate(test_loader, actor, vrp.reward,
-                                        vrp.render,
+
+    out, result_tour_indixes = validate(test_loader, actor,
+                                        VRP_PROBLEM_DEMANDS_LOADS.reward,
+                                        VRP_PROBLEM_DEMANDS_LOADS.render,
                                         config.test_dir,
                                         num_plot=5)
 

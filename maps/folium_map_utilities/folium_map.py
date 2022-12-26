@@ -11,7 +11,7 @@ from rl_for_solving_the_vrp.implementation_1 import config
 import io
 from PIL import Image
 
-map_dir = 'maps'
+map_dir = 'folium_map_utilities'
 os.makedirs(map_dir, exist_ok=True)
 map_name = f"{map_dir}/thessaloniki_map.html"
 before_visiting_img_name = f"{map_dir}/initial_map.png"
@@ -94,7 +94,7 @@ class Map:
             # from selenium import webdriver
             # driver = webdriver.Firefox()
             # driver.get(mapUrl)
-            # # wait for 5 seconds for the maps and other assets to be loaded in the browser
+            # # wait for 5 seconds for the folium_map_utilities and other assets to be loaded in the browser
             # time.sleep(5)
             # driver.save_screenshot(after_visiting_map_name_png)
             # driver.quit()
@@ -126,6 +126,28 @@ class Map:
 
       return x, y
 
+#locations, loads, demands = get_excel_data(file_path=config.data_path)
+#plot_locations_in_thessaloniki(locations)
+
+def plot_locations_in_thessaloniki(locations):
+    map = Map(center=config.thessaloniki_coordinates, zoom_start=12)
+    map.add_markers_at_points(locations)
+    map.show_map("initial_map_v2", open_in_browser=True, save_png=True)
 
 
+def plot_locations_visited_map(locations, result_tour_indixes):
+    locations = locations.squeeze(0).numpy()
+    xs = [locations[0][i] for i in result_tour_indixes][0][0]
+    ys = [locations[1][i] for i in result_tour_indixes][0][0]
 
+    print(f'Resulting tour is : {result_tour_indixes}')
+    number_of_stops = len(xs)
+    points_visiting = []
+
+    for i in range(number_of_stops):
+        x = xs[i]
+        y = ys[i]
+        points_visiting.append([x, y])
+
+    map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
+    map.plot_lines_between_points(points_visiting, show_map=True)

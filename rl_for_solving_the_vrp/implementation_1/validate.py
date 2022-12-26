@@ -1,16 +1,7 @@
 import os
-import time
-import datetime
 import numpy as np
 import torch
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from Models.actor import DRL4TSP
-import vrp
-from plot_utilities import save_plot_with_multiple_functions_in_same_figure
 from rl_for_solving_the_vrp.implementation_1 import config
-from vrp import VehicleRoutingDataset
-from  rl_for_solving_the_vrp.implementation_1.Models.critic import StateCritic
 
 device = config.device
 

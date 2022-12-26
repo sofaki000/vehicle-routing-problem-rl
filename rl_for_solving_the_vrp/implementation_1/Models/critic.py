@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from  rl_for_solving_the_vrp.implementation_1.Models.base_models import Encoder
+from  rl_for_solving_the_vrp.implementation_1.Models.pointer_network import Encoder
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -43,7 +43,6 @@ class Critic(nn.Module):
     This is a basic module that just looks at the log-probabilities predicted by
     the encoder + decoder, and returns an estimate of complexity
     """
-
     def __init__(self, hidden_size):
         super(Critic, self).__init__()
         # Define the encoder & decoder models

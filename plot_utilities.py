@@ -1,6 +1,5 @@
 from IPython.core.display import Image
 from time import gmtime, strftime
-from keras.utils import plot_model
 import matplotlib.pyplot as plt
 
 def save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title):

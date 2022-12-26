@@ -26,7 +26,7 @@ class VehicleRoutingDataset(Dataset):
 
         # Depot location will be the first node in each
         if locations is None:
-            locations = torch.rand((num_samples, 2, nodes_number + 1))
+            locations = torch.rand((num_samples, 2, nodes_number))# nodes_number + 1
         else:
             print("FOUND UR LOCATIONS WOHOO")
 

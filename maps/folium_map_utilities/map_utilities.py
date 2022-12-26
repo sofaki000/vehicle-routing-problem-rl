@@ -1,9 +1,9 @@
 # Define coordinates of where we want to center our map
 import torch
 from rl_for_solving_the_vrp.implementation_1 import config
-from rl_for_solving_the_vrp.implementation_1.maps.map import Map
+from maps.folium_map_utilities.folium_map import Map
 from rl_for_solving_the_vrp.implementation_1.train import train_vrp
-from rl_for_solving_the_vrp.implementation_1.vrp import VehicleRoutingDataset
+from rl_for_solving_the_vrp.implementation_1.problem_variations.VRP_PROBLEM_DEMANDS_LOADS import VehicleRoutingDataset
 
 map = Map(center=config.thessaloniki_coordinates, zoom_start=13)
 map.create_map()
