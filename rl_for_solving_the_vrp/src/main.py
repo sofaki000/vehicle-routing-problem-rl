@@ -16,14 +16,18 @@ torch.backends.cudnn.enabled = False
 if __name__ == '__main__':
     # gets random data for training
     loads, demands = get_loads_and_demands(use_test_data=True)
-    train_data = get_problem(evrp=False, loads=loads, demands=demands)
+    train_data = get_problem(evrp=True ,
+                             with_demands=False,
+                             loads=loads,
+                             demands=demands)
 
     # loads excel data
     loads, demands = get_loads_and_demands(use_test_data=False)
-    validation_data = get_problem(evrp=False, loads=loads, demands=demands)
+    validation_data = get_problem(evrp=True ,
+                                  with_demands=False,
+                                  loads=loads,
+                                  demands=demands)
 
-
-    train_data = get_problem(evrp= True)
 
     evrp = True  # solve evrp problem
     agent = get_agent(evrp, train_data, config.hidden_size, config.layers, config.dropout)
@@ -41,9 +45,9 @@ if __name__ == '__main__':
                                     num_layers=config.layers,
                                     num_epochs=config.num_epochs)
 
-    locations, loads, demands = get_excel_data(file_path=config.data_path)
-    locations = torch.FloatTensor(locations)[None, :, :]
-    plot_locations_visited_map(locations, result_tour_indixes)
+    # locations, loads, demands = get_excel_data(file_path=config.data_path)
+    # locations = torch.FloatTensor(locations)[None, :, :]
+    # plot_locations_visited_map(locations, result_tour_indixes)
 
 
 

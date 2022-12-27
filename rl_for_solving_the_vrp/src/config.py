@@ -1,4 +1,5 @@
 import torch
+from rl_for_solving_the_vrp.src.problem_variations import EVRP
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 thessaloniki_coordinates = [40.629269,  22.947412 ]
@@ -25,7 +26,10 @@ num_epochs = 10 #00
 # for load and demand only problem:
 #DYNAMIC_SIZE = 2  # (load, demand)
 STATIC_SIZE = 2  # (x, y)
-DYNAMIC_SIZE = 3
+# for evrp with demands and time
+DYNAMIC_SIZE = 1 #get_dynamic_size()
+
+PROBLEM_SOLVING_NOW = EVRP
 
 test_dir = 'test'
 

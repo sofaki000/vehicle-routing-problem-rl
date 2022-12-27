@@ -35,9 +35,6 @@ def train(agent, num_nodes, train_data, valid_data, reward_fn,
     actor_optim = torch.optim.Adam(agent.ptnet.parameters(), lr=actor_lr)
     critic_optim = torch.optim.Adam(agent.critic.parameters(), lr=critic_lr)
 
-    # actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
-    # critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
-
     train_loader = DataLoader(train_data, batch_size, True, num_workers=0)
     valid_loader = DataLoader(valid_data, batch_size, False, num_workers=0)
     best_reward = np.inf
@@ -128,7 +125,7 @@ def train(agent, num_nodes, train_data, valid_data, reward_fn,
         time_taken =  time.time() - epoch_start
         #print(f'Mean epoch loss/reward: {mean_loss:.4f}, {mean_reward:.4f}, {mean_valid:.4f}, took: {time_taken:.4f}s ({ np.mean(times):.4f}s / 100 batches)\n')
         print(
-        f'Mean epoch loss/reward: {mean_loss:.4f}, {mean_reward:.4f}, took: {time_taken:.4f}s ({np.mean(times):.4f}s / 100 batches)\n')
+        f'Mean epoch loss:{mean_loss:.4f}, reward:{mean_reward:.4f}, took: {time_taken:.4f}s ({np.mean(times):.4f}s / 100 batches)\n')
 
     # all epochs finished
     # we plot mean_actor_rewards_per_epoch, mean_critic_rewards_per_epoch
@@ -138,7 +135,7 @@ def train(agent, num_nodes, train_data, valid_data, reward_fn,
     title=f"E:{num_epochs} actor_lr:{actor_lr}, critic_lr:{critic_lr}, num_nodes:{num_nodes}"
     save_plot_with_multiple_functions_in_same_figure(results, labels, file_name, title)
 
-def train_vrp(agent, train_data, valid_data,   num_nodes, hidden_size, num_layers, dropout,
+def train_vrp(agent, train_data, valid_data, num_nodes, hidden_size, num_layers, dropout,
               batch_size,  actor_lr,  critic_lr, max_grad_norm, num_epochs):
     # Goals from paper:
     # VRP10, Capacity 20:  4.84  (Greedy)
@@ -147,8 +144,6 @@ def train_vrp(agent, train_data, valid_data,   num_nodes, hidden_size, num_layer
     # VRP100, Capacity 50: 17.23  (Greedy)
 
     print('Starting VRP training...')
-
-
     train(agent=agent,
           num_epochs=num_epochs,
           num_nodes=num_nodes,

@@ -62,9 +62,9 @@ class EVRP_WITH_TIME_AND_DEMANDS(Dataset):
             self.static = torch.cat((afs.unsqueeze(0).repeat(train_size, 1, 1), customers), dim=2).to(device)  # (train_size, 2, num_nodes+4)
 
         self.dynamic = torch.ones(train_size, 3, 1+num_afs+num_nodes, device=device)   # time duration, capacity, demands
-        self.dynamic[:, 0, :] *= t_limit
-        self.dynamic[:, 1, :] *= capacity
-        self.dynamic[:, 2, :num_afs+1] = 0
+        self.dynamic[:, 0, :] *= t_limit # time duration
+        self.dynamic[:, 1, :] *= capacity # capacity
+        self.dynamic[:, 2, :num_afs+1] = 0 # demands
         # self.dynamic[:, 1, :self.num_afs+1] = 0
 
         seq_len = self.static.size(2)
@@ -255,3 +255,7 @@ class EVRP_WITH_TIME_AND_DEMANDS(Dataset):
             # mask[all_masked, 0] =  1 # unmask the depot if all nodes are masked
 
             return dynamic
+    def are_demands_satisfied(self, dynamic):
+        if (dynamic[:, 2,:] == 0).all():  # all demands have been satisfied (depots kai afs exoun panta 0 since they dont have demand)
+            return True
+        return False

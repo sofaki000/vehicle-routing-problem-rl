@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+from rl_for_solving_the_vrp.src import config
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -110,22 +111,28 @@ class PointerNet(nn.Module):
         """
         batch_size, _, seq_len = static.shape
         max_times = 100
-        embedding_static = self.encoder1(static)
+        embedding_static = self.encoder1(static) # kathe node is represented by an embedding
         decoder_input = embedding_static[:, :, :1]  # (batch, embedding_dim, 1), always start from depot, i.e., the 1st point
         hidden = None
         mask = torch.zeros(batch_size, seq_len, device=device)
         mask[:, 0] = float('-inf')  # mask the depot
         dis_by_afs = [distances[:, i:i + 1, 0:1] + distances[:, i:i + 1, :] for i in range(1, self.num_afs+1)]
         dis_by_afs = torch.cat(dis_by_afs, dim=1).to(device)
-        dis_by_afs = torch.min(dis_by_afs, dim=1)    # tuple: (batch, seq_len), ()
+        dis_by_afs = torch.min(dis_by_afs, dim=1) # tuple: (batch, seq_len), ()
         dis_by_afs[0][:, 0] = 0
+
         dis_max = self.capacity / self.cons_rate # to max distance poy mporei na dianisei dedomenou to fuel capacity kai to  fuel consumption rate
 
         # the customers that could not be served directly with a visit to one AFS are masked
         # mask = torch.where((distances[:, 0, :] > dis_max/2) & (dis_by_afs > dis_max), torch.ones(mask.size())*float('-inf'), mask)
         mask[(distances[:, 0, :] > dis_max/2) & (dis_by_afs[0] > dis_max)] = float('-inf')
-        dynamic[:, 2, :] = torch.where((distances[:, 0, :] > dis_max/2) & (dis_by_afs[0] > dis_max),
-                                       torch.zeros(batch_size, seq_len, device=device), dynamic[:, 2, :])
+
+        depot_distances = distances[:,0,:] # ? einai ta depot distances ontws?
+        distance_from_nearest_afs = dis_by_afs[0] # ? einai ontws?
+        # we need this: but we have to understand first what is does
+        # dynamic[:, 2, :] = torch.where((depot_distances > dis_max/2) & (distance_from_nearest_afs > dis_max),
+        #                                torch.zeros(batch_size, seq_len, device=device), dynamic[:, 2, :])
+
         old_idx = torch.zeros(batch_size, 1, dtype=torch.long, device=device)
 
         if self.training or self.beam_width == 1:
@@ -133,7 +140,7 @@ class PointerNet(nn.Module):
             prob_log = torch.zeros(batch_size, device=device)
 
             for _ in range(max_times): # se kathe epanalhpsh edw, bgazei to next node tou kathe batch
-                if (dynamic[:, 2, :] == 0).all():   # all demands have been satisfied (depots kai afs exoun panta 0 since they dont have demand)
+                if config.PROBLEM_SOLVING_NOW.are_demands_satisfied(dynamic):
                     break
                 h_t, c_t = self.decoder(decoder_input, hidden)
                 h_t = h_t.squeeze(0)           # (batch*beam_width, hidden)

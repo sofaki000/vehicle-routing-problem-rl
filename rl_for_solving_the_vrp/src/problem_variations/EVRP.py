@@ -1,6 +1,8 @@
-from torch.utils.data import Dataset 
+from torch.utils.data import Dataset, DataLoader
 import torch
+from torch import nn
 import os
+import time
 import numpy as np
 
 from rl_for_solving_the_vrp.src import config
@@ -8,15 +10,10 @@ from rl_for_solving_the_vrp.src import config
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class EVRP(Dataset):
-    def __init__(self, train_size, num_nodes,
-                 t_limit, capacity,
-                 velocity=40, num_afs=3,
-                 data_dir=None, seed=520):
+    def __init__(self, train_size, num_nodes, capacity,   num_afs=3, data_dir=None, seed=520):
         super().__init__()
-
         self.capacity = capacity
         self.size = train_size
-        self.velocity = velocity
         self.num_afs = num_afs
         self.cons_rate = config.cons_rate
         if data_dir:
@@ -59,10 +56,10 @@ class EVRP(Dataset):
             customers[:, 1, :] = customers[:, 1, :] * 3.5 + 36
             self.static = torch.cat((afs.unsqueeze(0).repeat(train_size, 1, 1), customers), dim=2).to(device)  # (train_size, 2, num_nodes+4)
 
-        self.dynamic = torch.ones(train_size, 3, 1+num_afs+num_nodes, device=device)   # time duration, capacity, demands
-        self.dynamic[:, 0, :] *= t_limit
-        self.dynamic[:, 1, :] *= capacity
-        self.dynamic[:, 2, :num_afs+1] = 0
+        self.dynamic = torch.ones(train_size, 1, 1+num_afs+num_nodes, device=device)   # time duration, capacity, demands
+
+        self.dynamic[:, 0, :] *= capacity # fuel capacity
+        # self.dynamic[:, 1, :num_afs+1] = 0 # demands
         # self.dynamic[:, 1, :self.num_afs+1] = 0
 
         seq_len = self.static.size(2)
@@ -116,36 +113,27 @@ class EVRP(Dataset):
         distances = self.batch_distances
         num_afs = self.num_afs
         cons_rate = self.cons_rate
-        velocity = self.velocity
         dis_by_afs = self.dis_by_afs
 
         # pernoume ta pragmata ta swsta apo to dynamic
-        time = dynamic[:, 0, :].clone()
-        fuel = dynamic[:, 1, :].clone()
-        demands = dynamic[:, 2, :].clone()
+        fuel = dynamic[:, 0, :].clone()
 
         # den allazoume kati, apla pairnoume oti xreiazomaste gia na ananewsoume to mask
         dis1 = distances[torch.arange(distances.size(0)), idx ].clone()
         fuel_pd0 = self.cons_rate * dis1
-        time_pd0 = dis1 / velocity
+
         dis1[:, num_afs + 1:] += distances[:, 0, num_afs + 1:]
         fuel_pd1 = cons_rate * dis1
-        time_pd1 = (distances[torch.arange(distances.size(0)), idx ] + distances[:, 0, :]) / velocity
-        time_pd1[:, 1:num_afs + 1] += 0.25
-        time_pd1[:, num_afs + 1:] += 0.5
+
 
         # path2: ->Node-> Station-> Depot(choose the station making the total distance shortest)
         dis2 = distances[:, 1:num_afs + 1, :].gather(1, dis_by_afs[1].unsqueeze(1)).squeeze(1)
         dis2[:, 0] = 0
         dis2 += distances[torch.arange(distances.size(0)), idx]
         fuel_pd2 = cons_rate * dis2
-        time_pd2 = (distances[torch.arange(distances.size(0)), idx ] + dis_by_afs[0]) / velocity
-        time_pd2[:, 1:num_afs + 1] += 0.25
-        time_pd2[:, num_afs + 1:] += 0.5
 
         # path3: ->Node-> Station-> Depot(choose the closest station to the node), ignore this path temporarily
         # the next node should be able to return to depot with at least one way; otherwise, mask it
-
         afs = (idx.gt(0) & idx.le(num_afs))
         fs = idx.le(num_afs)
         customer = idx.gt(num_afs)
@@ -165,7 +153,7 @@ class EVRP(Dataset):
         mask[all_masked, 0] = 1  # unmask the depot if all nodes are masked
 
         return mask
-    def update_dynamic(self, dynamic, idx, old_idx):
+    def update_dynamic(self, dynamic, idx, old_idx, distances=None):
             """
             :param old_idx: (batch*beam, 1)
             :param idx: ditto
@@ -173,37 +161,30 @@ class EVRP(Dataset):
             :param dynamic: (batch*beam, dynamic_features, seq_len)
             :param distances: (batch*beam, seq_len, seq_len)
             :param dis_by_afs: (batch*beam, seq_len)
-            :param capacity, velocity, cons_rate, t_limit, num_afs: scalar
+            :param capacity, cons_rate, t_limit, num_afs: scalar
             :return: updated dynamic
             """
             num_afs = self.num_afs
-            t_limit = config.t_limit
             capacity = self.capacity
             cons_rate = self.cons_rate
-            velocity= self.velocity
-            distances =  self.batch_distances
-            # dis = distances[torch.arange(distances.size(0)), old_idx.squeeze(1), idx.squeeze(1)].unsqueeze(1)
+            if distances is None:
+                distances = self.batch_distances
+            else:
+                distances = distances
             dis = distances[torch.arange(distances.size(0)), old_idx.squeeze(1), idx].unsqueeze(1)
-            #depot = idx.eq(0).squeeze(1)
             depot = idx.eq(0)
-            # afs = (idx.gt(0) & idx.le(num_afs)).squeeze(1)
             afs = (idx.gt(0) & idx.le(num_afs))
-            fs = idx.le(num_afs) #.squeeze(1)
-            customer = idx.gt(num_afs) #.squeeze(1)  # TODO: introduce num_afs
-            time = dynamic[:, 0, :].clone()
-            fuel = dynamic[:, 1, :].clone()
-            demands = dynamic[:, 2, :].clone()
-
-            time -= dis / velocity
-            time[depot] = t_limit
-            time[afs] -= 0.25
-            time[customer] -= 0.5
+            fs = idx.le(num_afs)
+            customer = idx.gt(num_afs)
+            fuel = dynamic[:, 0, :].clone()
 
             fuel -= cons_rate * dis
             fuel[fs] = capacity
-            demands.scatter_(1, idx.unsqueeze(1), 0)
 
-            dynamic = torch.cat((time.unsqueeze(1), fuel.unsqueeze(1), demands.unsqueeze(1)), dim=1).to(device)
-
-
+            dynamic = fuel.unsqueeze(1).to(device)
             return dynamic
+
+def are_demands_satisfied(dynamic):
+    # there are no demands in current problem. The
+    # purpose of this function is to ensure compatibility
+    return False
